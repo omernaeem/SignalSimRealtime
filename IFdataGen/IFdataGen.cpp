@@ -572,6 +572,8 @@ int main(int argc, char* argv[])
 		printf("Configuration validation completed\n");
 		return 0;
 	}
+	if (Arguments.WithoutNoise)
+			printf("[INFO]\tSignal generation without noise\n");
 
 	NoiseArray = new complex_number[OutputParam.SampleFreq];
 	QuantArray = new unsigned char[OutputParam.SampleFreq * 4];
