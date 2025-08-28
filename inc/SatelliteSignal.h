@@ -14,6 +14,8 @@
 #include "SatelliteParam.h"
 #include "NavBit.h"
 
+#include "cuComplex.h"
+
 struct SignalAttribute
 {
 	int CodeLength;	// PRN length in unit of millisecond
@@ -33,6 +35,7 @@ public:
 
 	BOOL SetSignalAttribute(GnssSystem System, int SignalIndex, NavBit *pNavData, int svid);
 	BOOL GetSatelliteSignal(GNSS_TIME TransmitTime, complex_number &DataSignal, complex_number &PilotSignal);
+	BOOL GetSatelliteSignal(GNSS_TIME TransmitTime, cuComplex &DataSignal, cuComplex &PilotSignal);
 
 	// signal attributes
 	GnssSystem SatSystem;

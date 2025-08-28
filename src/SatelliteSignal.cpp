@@ -267,3 +267,135 @@ BOOL CSatelliteSignal::GetSatelliteSignal(GNSS_TIME TransmitTime, complex_number
 
 	return TRUE;
 }
+
+
+BOOL CSatelliteSignal::GetSatelliteSignal(GNSS_TIME TransmitTime, cuComplex &DataSignal, cuComplex &PilotSignal)
+{
+	int Milliseconds;
+	int BitLength = (Attribute->CodeLength * Attribute->NHLength);
+	int FrameNumber, BitNumber, BitPos, SecondaryPosition;
+	int DataBit, PilotBit = 0;
+	int SecondaryLength;
+	const unsigned int *SecondaryCode = GetPilotBits(SatSystem, SatSignal, Svid, SecondaryLength);
+	int Seconds, LeapSecond;
+	int GalileoE1Signal = (SatSystem == GalileoSystem && SatSignal == SIGNAL_INDEX_E1) ? 1 : 0;
+	int Param = ((SatSystem == GpsSystem && SatSignal == SIGNAL_INDEX_L5) ? 1 : 0) || GalileoE1Signal;	// set to 1 for E1 or L5
+
+	if (Svid < 0)	// attribute not yet set
+		return FALSE;
+	if (SatSystem == BdsSystem)	// subtract leap second difference
+		TransmitTime.MilliSeconds -= 14000;
+	else if (SatSystem == GlonassSystem)	// subtract leap second, add 3 hours
+	{
+		Seconds = (unsigned int)(TransmitTime.Week * 604800 + TransmitTime.MilliSeconds / 1000);
+		GetLeapSecond(Seconds, LeapSecond);
+		TransmitTime.MilliSeconds = (TransmitTime.MilliSeconds + 10800000 - LeapSecond * 1000) % 86400000;
+	}
+	if (TransmitTime.MilliSeconds < 0)	// protection on negative millisecond
+		TransmitTime.MilliSeconds += 604800000;
+
+	Milliseconds = TransmitTime.MilliSeconds + (GalileoE1Signal ? 1000 : 0);	// E1 page has 1000ms bias to week boundary
+	FrameNumber = Milliseconds / Attribute->FrameLength;	// subframe/page number
+	Milliseconds %= Attribute->FrameLength;
+	BitNumber = Milliseconds / BitLength;	// current bit position within current subframe/page
+	Milliseconds %= BitLength;
+	BitPos = Milliseconds / Attribute->CodeLength;	// coded round in data bit
+
+	if (FrameNumber != CurrentFrame)
+	{
+		if (NavData)
+			NavData->GetFrameData(TransmitTime, Svid, Param, DataBits);
+		CurrentFrame = FrameNumber;
+	}
+
+	DataBit = (DataBits[BitNumber] ? -1 : 1) * ((Attribute->NHCode & (1 << BitPos)) ? -1 : 1);
+	if (SecondaryCode)
+	{
+		SecondaryPosition = (TransmitTime.MilliSeconds / Attribute->CodeLength) % SecondaryLength;	// position in secondary code
+		PilotBit = (SecondaryCode[SecondaryPosition / 32] & (1 << (SecondaryPosition & 0x1f))) ? -1 : 1;
+	}
+
+	// generate DataSignal and PilotSignal
+	// the signal of data and pilot complex value will reflect their relative amplitude and phase
+	// if the signal has only data channel, assume the data channel has 0 phase
+	// if the signal has both data channel and pilot channel, the pilot channel has 0 phase
+	// the overall data+pilot power is 1 (except for the case that need to deduct BOC(6,1) element)
+	// signal and navigation bit match
+	switch (SatSystem)
+	{
+	case GpsSystem:
+		switch (SatSignal)
+		{
+		case SIGNAL_INDEX_L1CA:
+			DataSignal = make_cuFloatComplex((float)DataBit, 0);
+			PilotSignal = make_cuFloatComplex(0, 0);
+			break;
+		case SIGNAL_INDEX_L1C:
+			DataSignal = make_cuFloatComplex(DataBit * AMPLITUDE_1_4, 0);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_29_44, 0);
+			break;
+		case SIGNAL_INDEX_L2C:
+			DataSignal = make_cuFloatComplex(DataBit * AMPLITUDE_1_2, 0);
+			PilotSignal = make_cuFloatComplex(AMPLITUDE_1_2, 0);
+			break;
+		case SIGNAL_INDEX_L5:
+			DataSignal = make_cuFloatComplex(0, DataBit * AMPLITUDE_1_2);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_1_2, 0);
+			break;
+		}
+		break;
+	case BdsSystem:
+		switch (SatSignal)
+		{
+		case SIGNAL_INDEX_B1C: 
+			DataSignal = make_cuFloatComplex(0, -DataBit * AMPLITUDE_1_4);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_29_44, 0);
+			break;
+		case SIGNAL_INDEX_B1I:
+		case SIGNAL_INDEX_B2I:
+		case SIGNAL_INDEX_B3I:
+			DataSignal = make_cuFloatComplex((double)DataBit, 0);
+			PilotSignal = make_cuFloatComplex(0, 0);
+			break;
+		case SIGNAL_INDEX_B2a:
+			DataSignal = make_cuFloatComplex(0, -DataBit * AMPLITUDE_1_2);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_1_2, 0);
+			break;
+		case SIGNAL_INDEX_B2b:
+			DataSignal = make_cuFloatComplex(0, -DataBit * AMPLITUDE_1_2);	// B2b nominal power is 3dB lower than B2a, phase align with B2a data
+			PilotSignal = make_cuFloatComplex(0, 0);
+			break;
+		}
+		break;
+	case GalileoSystem:
+		switch (SatSignal)
+		{
+		case SIGNAL_INDEX_E1 :
+			DataSignal = make_cuFloatComplex(-DataBit * AMPLITUDE_1_2, 0);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_1_2, 0);
+			break;
+		case SIGNAL_INDEX_E5a:
+		case SIGNAL_INDEX_E5b:
+			DataSignal = make_cuFloatComplex(0, -DataBit * AMPLITUDE_1_2);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_1_2, 0);
+			break;
+		case SIGNAL_INDEX_E6 :
+			DataSignal = make_cuFloatComplex(0, 0);
+			PilotSignal = make_cuFloatComplex(PilotBit * AMPLITUDE_1_2, 0);
+			break;
+		}
+		break;
+	case GlonassSystem:
+		switch (SatSignal)
+		{
+		case SIGNAL_INDEX_G1 :
+		case SIGNAL_INDEX_G2 :
+			DataSignal = make_cuFloatComplex((double)DataBit, 0);
+			PilotSignal = make_cuFloatComplex(0, 0);
+			break;
+		}
+		break;
+	}
+
+	return TRUE;
+}
