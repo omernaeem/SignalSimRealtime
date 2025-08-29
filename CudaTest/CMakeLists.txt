@@ -51,23 +51,59 @@ list(FILTER ADVANCED_SRC EXCLUDE REGEX ".*IFdataGen\\.cpp$")
 
 add_executable(AdvancedCudaGuide ${ADVANCED_SRC})
 
+# Create third executable for GetIfSample data test
+file(GLOB DATA_TEST_SRC CONFIGURE_DEPENDS
+     "TestGetIfSampleData.cpp"
+     "../src/*.cpp")
+
+# Exclude the IFdataGen.cpp to avoid main function conflicts
+list(FILTER DATA_TEST_SRC EXCLUDE REGEX ".*IFdataGen\\.cpp$")
+
+add_executable(TestGetIfSampleData ${DATA_TEST_SRC})
+
+# Create fourth executable for signal comparison
+file(GLOB COMPARE_SRC CONFIGURE_DEPENDS
+     "CompareSignals.cpp"
+     "../src/*.cpp")
+
+# Exclude the IFdataGen.cpp to avoid main function conflicts
+list(FILTER COMPARE_SRC EXCLUDE REGEX ".*IFdataGen\\.cpp$")
+
+add_executable(CompareSignals ${COMPARE_SRC})
+
 target_include_directories(CudaTest PRIVATE ../inc)
 target_include_directories(AdvancedCudaGuide PRIVATE ../inc)
+target_include_directories(TestGetIfSampleData PRIVATE ../inc)
+target_include_directories(CompareSignals PRIVATE ../inc)
 
 # Add CUDA source files and link CUDA libraries
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/kernel.cu")
     target_sources(CudaTest PRIVATE ../src/kernel.cu)
     target_sources(AdvancedCudaGuide PRIVATE ../src/kernel.cu)
+    target_sources(TestGetIfSampleData PRIVATE ../src/kernel.cu)
+    target_sources(CompareSignals PRIVATE ../src/kernel.cu)
 endif()
 target_link_libraries(CudaTest PRIVATE CUDA::cudart CUDA::cuda_driver)
 target_link_libraries(AdvancedCudaGuide PRIVATE CUDA::cudart CUDA::cuda_driver)
+target_link_libraries(TestGetIfSampleData PRIVATE CUDA::cudart CUDA::cuda_driver)
+target_link_libraries(CompareSignals PRIVATE CUDA::cudart CUDA::cuda_driver)
 target_include_directories(CudaTest PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 target_include_directories(AdvancedCudaGuide PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+target_include_directories(TestGetIfSampleData PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+target_include_directories(CompareSignals PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 set_target_properties(CudaTest PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_STANDARD 17
     CUDA_STANDARD_REQUIRED ON)
 set_target_properties(AdvancedCudaGuide PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_STANDARD 17
+    CUDA_STANDARD_REQUIRED ON)
+set_target_properties(TestGetIfSampleData PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_STANDARD 17
+    CUDA_STANDARD_REQUIRED ON)
+set_target_properties(CompareSignals PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_STANDARD 17
     CUDA_STANDARD_REQUIRED ON)
@@ -107,6 +143,13 @@ if (MSVC)
         $<$<CONFIG:Release>:${MSVC_RELEASE_FLAGS}>
         $<$<CONFIG:RelWithDebInfo>:${MSVC_RELDBG_FLAGS}>
         $<$<CONFIG:Debug>:/Od /Zi>)
+
+    target_compile_options(TestGetIfSampleData PRIVATE
+        $<$<CONFIG:Release>:${MSVC_RELEASE_FLAGS}>
+        $<$<CONFIG:RelWithDebInfo>:${MSVC_RELDBG_FLAGS}>
+        $<$<CONFIG:Debug>:/Od /Zi>)
+
+    target_compile_options(DiagnosticTest PRIVATE /arch:AVX2 /O2)
 
     # ----- MSVC link options -----
     if (IPO_OK)
