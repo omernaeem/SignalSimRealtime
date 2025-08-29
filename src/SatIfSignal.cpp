@@ -8,9 +8,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <memory.h>
+#include <iostream>
 
 #include "SatIfSignal.h"
 #include "FastMath.h"
+
 
 CSatIfSignal::CSatIfSignal(int MsSampleNumber, int SatIfFreq, GnssSystem SatSystem, int SatSignalIndex, unsigned char SatId) : SampleNumber(MsSampleNumber), IfFreq(SatIfFreq), System(SatSystem), SignalIndex(SatSignalIndex), Svid((int)SatId)
 {
@@ -90,9 +92,12 @@ void CSatIfSignal::GetIfSample(GNSS_TIME CurTime)
 	FastMath::InitializeLUT();
 	for (i = 0; i < SampleNumber; i ++)
 	{
+
+//		std::cout << "CurIntPhase: " << CurIntPhase << ", IntPhaseStep: " << IntPhaseStep << std::endl;
 //		SampleArray[i] = GetPrnValue(CurChip, CodeStep) * GetRotateValue(CurPhase, PhaseStep) * Amp;
 		SampleArray[i] = GetPrnValue(CurChip, CodeStep) * GetRotateValue(CurIntPhase, IntPhaseStep) * Amp;
 	}
+//	exit(0);
 }
 
 complex_number CSatIfSignal::GetPrnValue(double& CurChip, double CodeStep)

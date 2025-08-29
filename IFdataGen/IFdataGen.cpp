@@ -100,23 +100,23 @@ int main(int argc, char* argv[])
 	// Default arguments
 	Arguments.ConfigFile = "IfGenTest.json"; // Default JSON file
 	Arguments.OutputFile = "";
-	Arguments.MultiThread = true; // Default to use multi-threading
+	Arguments.MultiThread = false; // Default to use multi-threading
 	Arguments.ValidateOnly = false;
 	Arguments.OutputTag = false;
 	Arguments.WithoutNoise = false; // Default to include noise
 
 	SetOutputFile(stdout);
-//	SetOutputLevel(MSG_LEVEL_INFO);
+	SetOutputLevel(MSG_LEVEL_INFO);
 
-	// Show help if no arguments provided
-	if (argc == 1)
-	{
-		ShowHelp(argv[0]);
-		return 0;
-	}
+	// // Show help if no arguments provided
+	// if (argc == 1)
+	// {
+	// 	ShowHelp(argv[0]);
+	// 	return 0;
+	// }
 
-	if (!ParseCommandLineArgs(argc, argv, Arguments))
-		return 1;
+	// if (!ParseCommandLineArgs(argc, argv, Arguments))
+	// 	return 1;
 
 	
 	printf("\n================================================================================\n");

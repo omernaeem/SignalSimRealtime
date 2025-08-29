@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)  # Need >=3.18 for full CUDA support
-project(MyProject LANGUAGES CXX CUDA)
+project(RealTimeSim LANGUAGES CXX CUDA)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -17,4 +17,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 # Add subdirectory for IFdataGen
 add_subdirectory(IFdataGen)
+
+# Add subdirectory for CudaTest
+add_subdirectory(CudaTest)
 
